@@ -83,18 +83,17 @@ bool GlobalPositioner::Solve(const ViewGraph& view_graph,
 
   AddCamerasAndPointsToParameterGroups(images, tracks);
 
+  // 修改
   for ( auto& image_pair : images) {
-  const image_t& image_id = image_pair.first;
-  Image& image = image_pair.second;
-
-  // 获取相机平移向量数据指针
-  double* translation = image.cam_from_world.translation.data();
-
-  // 明确再次调用 AddParameterBlock。
-  problem_->AddParameterBlock(translation, 3);
-
-  // 将平移向量设为常量，确保优化中不修改平移
-  problem_->SetParameterBlockConstant(translation);
+    const image_t& image_id = image_pair.first;
+    Image& image = image_pair.second;
+    // 获取相机平移向量数据指针
+    double* translation = image.cam_from_world.translation.data();
+    // 明确再次调用 AddParameterBlock。
+    problem_->AddParameterBlock(translation, 3);
+    // 将平移向量设为常量，确保优化中不修改平移
+    problem_->SetParameterBlockConstant(translation);
+    // LOG(INFO) << "translation4 " << image.cam_from_world.translation[0]<<" "<< image.cam_from_world.translation[1]<<" "<< image.cam_from_world.translation[2];
   }
 
   // Parameterize the variables, set image poses / tracks / scales to be
@@ -133,7 +132,18 @@ bool GlobalPositioner::Solve(const ViewGraph& view_graph,
     LOG(INFO) << summary.BriefReport();
   }
 
+
+  for ( auto& image_pair : images) {
+    const image_t& image_id = image_pair.first;
+    Image& image = image_pair.second;
+    LOG(INFO) << "translation3 " << image.cam_from_world.translation[0]<<" "<< image.cam_from_world.translation[1]<<" "<< image.cam_from_world.translation[2];
+  }
   ConvertResults(images);
+  for ( auto& image_pair : images) {
+    const image_t& image_id = image_pair.first;
+    Image& image = image_pair.second;
+    LOG(INFO) << "translation4 " << image.cam_from_world.translation[0]<<" "<< image.cam_from_world.translation[1]<<" "<< image.cam_from_world.translation[2];
+  }
   return summary.IsSolutionUsable();
 }
 
@@ -193,7 +203,7 @@ Eigen::Vector3d GetTranslationFromTxt(const std::string& filename, const std::st
 
 
 // std::string filename = "/home/hjl/data/images_w.txt";
-std::string filename = "/home/hjl/data/images_w_disturbed.txt";
+std::string filename = "/home/hjl/data/images_w_disturbed2.txt";
 
 void GlobalPositioner::InitializeRandomPositions(
     const ViewGraph& view_graph,
@@ -467,7 +477,43 @@ void GlobalPositioner::ConvertResults(
     std::unordered_map<image_t, Image>& images) {
   // translation now stores the camera position, needs to convert back to
   // translation
+
+  // 打开TXT文件并读取内容
+  // std::ifstream file("/home/hjl/data/images_w_disturbed2.txt");
+  // if (!file.is_open()) {
+  //   std::cerr << "Failed to open rotation data file." << std::endl;
+  //   return;
+  // }
+  // std::string line;
+  // while (std::getline(file, line)) {
+  //   std::istringstream iss(line);
+  //   std::string file_name;
+  //   double qw, qx, qy, qz;
+
+  //   // 读取文件名和四元数
+  //   if (!(iss >> file_name >> qw >> qx >> qy >> qz)) {
+  //     std::cerr << "Error parsing line: " << line << std::endl;
+  //     continue;  // 跳过格式错误的行
+  //   }
+
+  // for (auto& [image_id, image] : images) {
+  //     if (image.file_name == file_name) {
+  //       // 使用Eigen的四元数类进行旋转赋值
+  //       Eigen::Quaterniond quaternion(qw, qx, qy, qz);
+  //       image.cam_from_world.rotation = quaternion;
+
+  //       // 计算新的translation
+  //       image.cam_from_world.translation =
+  //           -(image.cam_from_world.rotation * image.cam_from_world.translation);
+
+  //       break;  // 退出循环，处理下一个文件
+  //     }
+  //   }
+  //   file.close();
+  // }
+
   for (auto& [image_id, image] : images) {
+    // LOG(INFO) << "rotation " << image.cam_from_world.rotation;
     image.cam_from_world.translation =
         -(image.cam_from_world.rotation * image.cam_from_world.translation);
   }

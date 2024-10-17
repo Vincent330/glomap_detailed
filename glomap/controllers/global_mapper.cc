@@ -54,7 +54,7 @@ bool GlobalMapper::Solve(const colmap::Database& database,
     UndistortImages(cameras, images, true);
 
     // std::string txt_file_path = "/home/hjl/data/images_w.txt";
-    std::string txt_file_path = "/home/hjl/data/images_w_disturbed.txt";
+    std::string txt_file_path = "/home/hjl/data/images_w_disturbed2.txt";
     EstimateRelativePosesFromTxt_name(view_graph, images, txt_file_path);
     // EstimateRelativePoses(view_graph, cameras, images, options_.opt_relpose);
 
@@ -168,23 +168,25 @@ bool GlobalMapper::Solve(const colmap::Database& database,
 
     for (int ite = 0; ite < options_.num_iteration_bundle_adjustment; ite++) {
       BundleAdjuster ba_engine(options_.opt_ba);
-
       BundleAdjusterOptions& ba_engine_options_inner = ba_engine.GetOptions();
 
       // Staged bundle adjustment
       // 6.1. First stage: optimize positions only
       ba_engine_options_inner.optimize_rotations = false;
+      ba_engine_options_inner.optimize_translation = false;
       if (!ba_engine.Solve(view_graph, cameras, images, tracks)) {
         return false;
       }
       LOG(INFO) << "Global bundle adjustment iteration " << ite + 1 << " / "
                 << options_.num_iteration_bundle_adjustment
                 << ", stage 1 finished (position only)";
+      LOG(INFO) << "optimize_translation? " << ba_engine_options_inner.optimize_translation;
       run_timer.PrintSeconds();
 
       // 6.2. Second stage: optimize rotations if desired
       ba_engine_options_inner.optimize_rotations =
           options_.opt_ba.optimize_rotations;
+      ba_engine_options_inner.optimize_translation = false;
       if (ba_engine_options_inner.optimize_rotations &&
           !ba_engine.Solve(view_graph, cameras, images, tracks)) {
         return false;
@@ -192,6 +194,7 @@ bool GlobalMapper::Solve(const colmap::Database& database,
       LOG(INFO) << "Global bundle adjustment iteration " << ite + 1 << " / "
                 << options_.num_iteration_bundle_adjustment
                 << ", stage 2 finished";
+      LOG(INFO) << "optimize_translation? " << ba_engine_options_inner.optimize_translation;
       if (ite != options_.num_iteration_bundle_adjustment - 1)
         run_timer.PrintSeconds();
 

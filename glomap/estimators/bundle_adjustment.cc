@@ -30,8 +30,17 @@ bool BundleAdjuster::Solve(const ViewGraph& view_graph,
   // optimization
   AddCamerasAndPointsToParameterGroups(cameras, images, tracks);
 
+  // options_.optimize_translation = false;
+
   // Parameterize the variables
   ParameterizeVariables(cameras, images, tracks);
+
+  // 修改
+  // for (auto& [image_id, image] : images) {
+  //   if (problem_->HasParameterBlock(image.cam_from_world.translation.data())) {
+  //     problem_->SetParameterBlockConstant(image.cam_from_world.translation.data());
+  //   }
+  // }
 
   // Set the solver options.
   ceres::Solver::Summary summary;
@@ -70,7 +79,7 @@ void BundleAdjuster::AddPointToCameraConstraints(
       Image& image = images[observation.first];
 
       ceres::CostFunction* cost_function =
-          colmap::CameraCostFunction<colmap::ReprojErrorCostFunction>(
+          colmap::CameraCostFunction<colmap::ReprojErrorCostFunction>(   //
               cameras[image.camera_id].model_id,
               image.features[observation.second]);
 
@@ -135,21 +144,25 @@ void BundleAdjuster::ParameterizeVariables(
   // if desired FUTURE: Consider fix the scale of the reconstruction
   int counter = 0;
   for (auto& [image_id, image] : images) {
+    // LOG(INFO) << "translation1 " << image.cam_from_world.translation[0]<<" "<< image.cam_from_world.translation[1]<<" "<< image.cam_from_world.translation[2];
     if (problem_->HasParameterBlock(
             image.cam_from_world.rotation.coeffs().data())) {
       colmap::SetQuaternionManifold(
-          problem_.get(), image.cam_from_world.rotation.coeffs().data());
+          problem_.get(), image.cam_from_world.rotation.coeffs().data()); // 确保旋转参数在优化过程中不会偏离有效的四元数空间
 
       if (counter == 0) {
         center = image_id;
         counter++;
       }
       if (!options_.optimize_rotations)
-        problem_->SetParameterBlockConstant(
-            image.cam_from_world.rotation.coeffs().data());
-      if (!options_.optimize_translation)
-        problem_->SetParameterBlockConstant(
-            image.cam_from_world.translation.data());
+        problem_->SetParameterBlockConstant(image.cam_from_world.rotation.coeffs().data());
+      if (!options_.optimize_translation){
+        // LOG(INFO) << "optimize_translation is set to false. The translation will not be optimized.";
+        problem_->SetParameterBlockConstant(image.cam_from_world.translation.data());
+        LOG(INFO) << "translation2 " << image.cam_from_world.translation[0]<<" "<< image.cam_from_world.translation[1]<<" "<< image.cam_from_world.translation[2];
+      }
+        // problem_->SetParameterBlockConstant(
+        //     image.cam_from_world.translation.data());
     }
   }
 
@@ -158,6 +171,13 @@ void BundleAdjuster::ParameterizeVariables(
       images[center].cam_from_world.rotation.coeffs().data());
   problem_->SetParameterBlockConstant(
       images[center].cam_from_world.translation.data());
+
+  // 修改
+  // for (auto& [image_id, image] : images) {
+  //   if (problem_->HasParameterBlock(image.cam_from_world.translation.data())) {
+  //     problem_->SetParameterBlockConstant(image.cam_from_world.translation.data());
+  //   }
+  // }
 
   // Parameterize the camera parameters, or set them to be constant if desired
   if (options_.optimize_intrinsics) {
@@ -176,6 +196,15 @@ void BundleAdjuster::ParameterizeVariables(
 
   } else {
     for (auto& [camera_id, camera] : cameras) {
+      
+      camera.params[0] = 1081.8352823540943;  // fx
+      camera.params[1] = 1087.9794235816214;   // fy
+      camera.params[2] = 960;                  // cx
+      camera.params[3] = 540;                  // cy
+      LOG(INFO) << "Camera " << camera_id << " parameters: "
+              << camera.params[0] << ", " << camera.params[1] << ", "
+              << camera.params[2] << ", " << camera.params[3];
+
       if (problem_->HasParameterBlock(camera.params.data())) {
         problem_->SetParameterBlockConstant(camera.params.data());
       }

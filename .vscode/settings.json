@@ -66,6 +66,9 @@
         "qr": "cpp",
         "svd": "cpp",
         "sparse": "cpp",
-        "stdvector": "cpp"
+        "stdvector": "cpp",
+        "condition_variable": "cpp",
+        "mutex": "cpp",
+        "*.ipp": "cpp"
     }
 }
